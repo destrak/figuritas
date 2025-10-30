@@ -1,39 +1,33 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { CartProvider, useCart } from "./context/CartContext";
 import BarNav from "./components/BarNav";
 import ProductsContainer from "./components/ProductsContainer";
 import ProductDetail from "./pages/ProductDetail";
+import CartPage from "./pages/CartPage";
 import { products } from "./data/products";
 
-function App() {
-  const [cartCount, setCartCount] = React.useState(0);
-
-  const handleAddToCart = (product) => {
-    // aquí podrías manejar un carrito real; por ahora solo incrementa el contador
-    setCartCount((n) => n + 1);
-  };
+const AppContent = () => {
+  const { count } = useCart();
 
   return (
-    <Router>
-      <BarNav cartCount={cartCount} />
-
+    <>
+      <BarNav cartCount={count} />
       <Routes>
-        <Route
-          path="/"
-          element={<ProductsContainer title="Productos" products={products} />}
-        />
-        <Route
-          path="/productos"
-          element={<ProductsContainer title="Productos" products={products} />}
-        />
-        <Route
-          path="/product/:id"
-          element={<ProductDetail onAddToCart={handleAddToCart} />}
-        />
-        <Route path="/cart" element={<div style={{ padding: 24 }}><h2>🛒 Tu carrito</h2></div>} />
+        <Route path="/" element={<ProductsContainer products={products} />} />
+        <Route path="/product/:id" element={<ProductDetail />} />
+        <Route path="/cart" element={<CartPage />} />
       </Routes>
-    </Router>
+    </>
+  );
+};
+
+export default function App() {
+  return (
+    <CartProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </CartProvider>
   );
 }
-
-export default App;

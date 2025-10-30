@@ -1,8 +1,17 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+
+const routeTitle = (pathname) => {
+  if (pathname === "/") return "Inicio";
+  if (pathname.startsWith("/product/")) return "Detalle";
+  if (pathname === "/cart") return "Carrito";
+  return "Inicio";
+};
 
 const BarNav = ({ cartCount = 0 }) => {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const title = routeTitle(pathname);
 
   return (
     <header
@@ -10,7 +19,7 @@ const BarNav = ({ cartCount = 0 }) => {
         position: "sticky",
         top: 0,
         insetInline: 0,
-        width: "100vw",            // ocupa todo el ancho real
+        width: "100vw",
         background: "#0f172a",
         color: "#fff",
         zIndex: 50,
@@ -22,53 +31,27 @@ const BarNav = ({ cartCount = 0 }) => {
           width: "100%",
           padding: "12px 24px",
           boxSizing: "border-box",
-          display: "flex",
+          display: "grid",
+          gridTemplateColumns: "1fr auto 1fr", // izq · centro · der
           alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
         }}
       >
-        {/* Marca */}
-        <Link
-          to="/"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            textDecoration: "none",
-            color: "#fff",
-            fontWeight: 800,
-            fontSize: 20,
-          }}
-        >
-          <span
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 8,
-              background: "linear-gradient(135deg,#06b6d4,#2563eb)",
-            }}
-          />
-          Figuritas
-        </Link>
+        {/* Izquierda: Marca */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Link to="/" style={{ display: "flex", alignItems: "center", gap: 10, color: "#fff", textDecoration: "none", fontWeight: 800, fontSize: 20 }}>
+            <span style={{ width: 28, height: 28, borderRadius: 8, background: "linear-gradient(135deg,#06b6d4,#2563eb)" }} />
+            Figuritas
+          </Link>
+        </div>
 
-        {/* Links */}
-        <nav style={{ display: "flex", gap: 16 }}>
-          <Link to="/" style={{ color: "#fff", textDecoration: "none", fontWeight: 700 }}>
-            Inicio
-          </Link>
-          <Link to="/productos" style={{ color: "#d1d5db", textDecoration: "none" }}>
-            Productos
-          </Link>
-          <Link to="/ofertas" style={{ color: "#d1d5db", textDecoration: "none" }}>
-            Ofertas
-          </Link>
-        </nav>
+        {/* Centro: Título de la vista */}
+        <div style={{ textAlign: "center", fontWeight: 800 }}>{title}</div>
 
-        {/* Carrito movido y con margen del borde */}
-        <div style={{ marginRight: "24px" }}>
+        {/* Derecha: Carrito */}
+        <div style={{ justifySelf: "end" }}>
           <button
             onClick={() => navigate("/cart")}
+            aria-label="Ver carrito"
             style={{
               position: "relative",
               width: 44,
@@ -80,27 +63,16 @@ const BarNav = ({ cartCount = 0 }) => {
               display: "grid",
               placeItems: "center",
               cursor: "pointer",
-              transition: "transform 0.2s ease, box-shadow 0.2s ease",
+              transition: "transform .2s ease",
             }}
             onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
             onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1.0)")}
-            aria-label="Ver carrito"
           >
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="9" cy="21" r="1"></circle>
-              <circle cx="20" cy="21" r="1"></circle>
-              <path d="M1 1h4l2.68 12.39a2 2 0 0 0 2 1.61h7.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="21" r="1" />
+              <circle cx="20" cy="21" r="1" />
+              <path d="M1 1h4l2.68 12.39a2 2 0 0 0 2 1.61h7.72a2 2 0 0 0 2-1.61L23 6H6" />
             </svg>
-
             {cartCount > 0 && (
               <span
                 style={{

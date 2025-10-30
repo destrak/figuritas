@@ -1,48 +1,37 @@
 import React from "react";
 import ProductCard from "./ProductCard";
 
-const ProductsContainer = ({ title = "Productos", products = [] }) => {
-  const wrap = {
-    width: "100%",
-    background: "#0b1220",
-    padding: "24px 20px",
-    borderTop: "1px solid #1f2937",
-  };
-
-  const inner = {
-    width: "min(1200px, 96vw)",
-    margin: "0 auto",
-  };
-
-  const heading = {
-    color: "#e5e7eb",
-    margin: "0 0 16px 4px",
-    fontSize: 20,
-    fontWeight: 800,
-  };
-
-  const grid = {
-    display: "grid",
-    gap: 20,
-    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-    alignItems: "start",
-  };
-
+const ProductsContainer = ({ products = [] }) => {
   return (
-    <section style={wrap}>
-      <div style={inner}>
-        {title && <h2 style={heading}>{title}</h2>}
-        <div style={grid}>
-          {products.map((p) => (
-            <ProductCard
-              key={p.id}
-              id={p.id}
-              name={p.name}
-              price={p.price}
-              image={p.image}
-            />
-          ))}
-        </div>
+    <section
+      style={{
+        width: "100vw",                 // 👈 ocupa todo el ancho de la página
+        minHeight: "calc(100vh - 64px)",
+        background: "#0b1220",
+        borderTop: "1px solid #1f2937",
+        boxSizing: "border-box",
+        padding: "24px 24px 40px",      // mismo padding horizontal que tu BarNav
+        overflowX: "hidden",            // seguridad extra
+      }}
+    >
+      <div
+        style={{
+          display: "grid",
+          gap: 24,
+          // 👇 grid full-width, responsivo y sin “pasarse”
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          alignItems: "start",
+        }}
+      >
+        {products.map((p) => (
+          <ProductCard
+            key={p.id}
+            id={p.id}
+            name={p.name}
+            price={p.price}
+            image={p.image}
+          />
+        ))}
       </div>
     </section>
   );

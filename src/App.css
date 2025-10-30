@@ -40,3 +40,11 @@
 .read-the-docs {
   color: #888;
 }
+/* añade/asegura estas reglas */
+html, body {
+  overflow-x: hidden;   /* ❗ evita que “se pase” a lo ancho */
+}
+
+:root{
+  --container-max: 1200px; /* ancho fijo para tu contenido */
+}

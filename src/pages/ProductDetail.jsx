@@ -1,21 +1,15 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { products } from "../data/products";
+import { useCart } from "../context/CartContext";
 
-const ProductDetail = ({ onAddToCart }) => {
+const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { addToCart } = useCart();
 
   const product = products.find((p) => p.id === id);
-
-  if (!product) {
-    return (
-      <div style={{ padding: 24 }}>
-        <h2>Producto no encontrado</h2>
-        <button onClick={() => navigate(-1)}>Volver</button>
-      </div>
-    );
-  }
+  if (!product) return <h2>Producto no encontrado</h2>;
 
   const { name, price, stock, image } = product;
 
@@ -23,11 +17,12 @@ const ProductDetail = ({ onAddToCart }) => {
     <main
       style={{
         width: "100%",
-        background: "#0b1220",
         minHeight: "calc(100vh - 60px)",
+        background: "#0b1220",
         padding: "24px 20px",
         display: "grid",
         placeItems: "center",
+        color: "#e5e7eb",
       }}
     >
       <div
@@ -40,71 +35,39 @@ const ProductDetail = ({ onAddToCart }) => {
           display: "grid",
           gridTemplateColumns: "minmax(260px, 1fr) 1.2fr",
           gap: 24,
-          color: "#e5e7eb",
         }}
       >
-        {/* Imagen grande */}
-        <div
+        <img
+          src={image}
+          alt={name}
           style={{
             width: "100%",
-            aspectRatio: "1 / 1",
-            overflow: "hidden",
-            background: "#111827",
+            aspectRatio: "1/1",
+            objectFit: "cover",
             borderRadius: 12,
-            border: "1px solid #1f2937",
           }}
-        >
-          <img
-            src={image}
-            alt={name}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
-        </div>
-
-        {/* Info */}
-        <div style={{ display: "grid", gap: 12, alignContent: "start" }}>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800 }}>{name}</h1>
-
+        />
+        <div style={{ display: "grid", gap: 12 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 800 }}>{name}</h1>
           <div style={{ fontSize: 28, fontWeight: 900, color: "#22c55e" }}>
-            ${Number(price).toLocaleString("es-CL")}
+            ${price.toLocaleString("es-CL")}
           </div>
-
-          <div style={{ fontSize: 14, color: stock > 0 ? "#a7f3d0" : "#fca5a5" }}>
-            {stock > 0 ? `En stock: ${stock} unidades` : "Sin stock"}
-          </div>
-
-          <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
-            <button
-              onClick={() => onAddToCart?.(product)}
-              disabled={stock <= 0}
-              style={{
-                padding: "12px 18px",
-                borderRadius: 12,
-                border: "1px solid #22c55e",
-                background: stock > 0 ? "#16a34a" : "#374151",
-                color: "#fff",
-                fontWeight: 800,
-                cursor: stock > 0 ? "pointer" : "not-allowed",
-              }}
-            >
-              Añadir al carrito
-            </button>
-
-            <button
-              onClick={() => navigate(-1)}
-              style={{
-                padding: "12px 14px",
-                borderRadius: 12,
-                border: "1px solid #334155",
-                background: "#111827",
-                color: "#e5e7eb",
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
-              Volver
-            </button>
-          </div>
+          <p>{stock > 0 ? `Stock disponible: ${stock}` : "Sin stock"}</p>
+          <button
+            disabled={stock <= 0}
+            onClick={() => addToCart(product)}
+            style={{
+              padding: "12px 18px",
+              borderRadius: 12,
+              border: "1px solid #22c55e",
+              background: stock > 0 ? "#16a34a" : "#374151",
+              color: "#fff",
+              fontWeight: 800,
+              cursor: stock > 0 ? "pointer" : "not-allowed",
+            }}
+          >
+            Añadir al carrito
+          </button>
         </div>
       </div>
     </main>
