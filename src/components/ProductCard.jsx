@@ -1,4 +1,6 @@
-// …imports
+import React from "react";
+import { useNavigate } from "react-router-dom";
+
 const ProductCard = ({ id, name, price, image }) => {
   const navigate = useNavigate();
 
@@ -36,3 +38,5 @@ const ProductCard = ({ id, name, price, image }) => {
     </article>
   );
 };
+
+export default ProductCard;
