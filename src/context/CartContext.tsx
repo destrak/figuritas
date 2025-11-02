@@ -1,107 +1,101 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
-
-
-import * as CartAPI from '../data/api/cartapi'
-import type { CartItemDTO } from '../data/api/cartapi'
-
-// Define el tipo del producto que usan tus componentes
-type Product = { id: number; name: string; price: number };
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import {
+  getCartDetail,
+  addOneToCart,
+  setQtyDB,
+  clearCartDB,
+  removeFromCartDB,
+  CartItem,
+} from '../data/api/cart';
 
 type CartCtx = {
-  items: CartItemDTO[];
-  addToCart: (product: Product) => Promise<void>;
+  items: CartItem[];
+  addToCart: (p: { id: number; name: string; price: number }) => Promise<void>;
   decOne: (id: number) => Promise<void>;
   setQty: (id: number, qty: number) => Promise<void>;
   clearCart: () => Promise<void>;
   removeFromCart: (id: number) => Promise<void>;
   total: number;
   count: number;
-  isLoading: boolean;
-  error: string | null;
-  clearError: () => void;
-}
+};
 
 const CartContext = createContext<CartCtx | undefined>(undefined);
-
 export const useCart = () => {
   const ctx = useContext(CartContext);
   if (!ctx) throw new Error('useCart must be used within CartProvider');
   return ctx;
-}
-
-// ✅ ELIMINADO: Esta constante ya no es necesaria.
-// const CAR_ID = 1; 
+};
 
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
-  const [items, setItems] = useState<CartItemDTO[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const clearError = () => setError(null);
+  const [items, setItems] = useState<CartItem[]>([]);
 
   const refresh = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await CartAPI.getCartItems();
-      setItems(data);
-    } catch (e: any) {
-      setError(e.message || 'Ocurrió un error inesperado.');
-    } finally {
-      setIsLoading(false);
-    }
+    const data = await getCartDetail();
+    setItems(data);
   }, []);
 
-  useEffect(() => { refresh().catch(console.error) }, [refresh]);
+  useEffect(() => {
+    refresh().catch(console.error);
+  }, [refresh]);
 
-  // ✅ ELIMINADO: Se ha quitado el useEffect completo que gestionaba la 
-  // suscripción en tiempo real con Supabase.
-
-  // --- Métodos del carrito refactorizados ---
-
-  const handleApiCall = async (apiCall: () => Promise<void>, snapshot: CartItemDTO[]) => {
-    clearError();
+  const addToCart = async (p: { id: number; name: string; price: number }) => {
+    // optimistic
+    setItems(prev => {
+      const i = prev.find(x => x.id === p.id);
+      if (i) return prev.map(x => (x.id === p.id ? { ...x, qty: x.qty + 1 } : x));
+      return [...prev, { id: p.id, name: p.name, price: p.price, qty: 1 }];
+    });
     try {
-      await apiCall();
-    } catch (e: any) {
-      setError(e.message || 'La operación falló.');
-      setItems(snapshot);
+      await addOneToCart(p.id); // backend espera id_objeto
+    } catch (e) {
+      console.error(e);
+      await refresh(); // rollback
     }
   };
 
-  const addToCart = async (product: Product) => {
-    const snapshot = items;
-    setItems(prev => {
-      const i = prev.find(x => x.id === product.id);
-      if (i) return prev.map(x => x.id === product.id ? { ...x, qty: x.qty + 1 } : x);
-      return [...prev, { id: product.id, name: product.name, price: product.price, qty: 1 }];
-    });
-    await handleApiCall(() => CartAPI.addItemToOneCart(product.id), snapshot);
+  const decOne = async (id: number) => {
+    const current = items.find(x => x.id === id)?.qty ?? 0;
+    const next = current - 1;
+    setItems(prev => prev.flatMap(x => (x.id !== id ? [x] : next > 0 ? [{ ...x, qty: next }] : [])));
+    try {
+      await setQtyDB(id, next);
+    } catch (e) {
+      console.error(e);
+      await refresh();
+    }
   };
 
   const setQty = async (id: number, qty: number) => {
-    const snapshot = items;
-    setItems(prev => prev.flatMap(x => x.id !== id ? [x] : qty > 0 ? [{ ...x, qty }] : []));
-    await handleApiCall(() => CartAPI.updateItemQuantity(id, qty), snapshot);
-  };
-  
-  const decOne = async (id: number) => {
-    const currentQty = items.find(item => item.id === id)?.qty ?? 0;
-    if (currentQty > 0) {
-      await setQty(id, currentQty - 1);
+    const snap = items;
+    setItems(prev => prev.flatMap(x => (x.id !== id ? [x] : qty > 0 ? [{ ...x, qty }] : [])));
+    try {
+      await setQtyDB(id, qty);
+    } catch (e) {
+      console.error(e);
+      setItems(snap);
     }
   };
 
   const clearCart = async () => {
-    const snapshot = items;
+    const snap = items;
     setItems([]);
-    await handleApiCall(() => CartAPI.clearEntireCart(), snapshot);
+    try {
+      await clearCartDB();
+    } catch (e) {
+      console.error(e);
+      setItems(snap);
+    }
   };
 
   const removeFromCart = async (id: number) => {
-    const snapshot = items;
+    const snap = items;
     setItems(prev => prev.filter(x => x.id !== id));
-    await handleApiCall(() => CartAPI.removeItemFromCart(id), snapshot);
+    try {
+      await removeFromCartDB(id);
+    } catch (e) {
+      console.error(e);
+      setItems(snap);
+    }
   };
 
   const total = items.reduce((s, i) => s + i.price * i.qty, 0);
@@ -109,19 +103,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <CartContext.Provider
-      value={{ 
-        items, 
-        addToCart, 
-        decOne, 
-        setQty, 
-        clearCart, 
-        removeFromCart, 
-        total, 
-        count,
-        isLoading,
-        error,
-        clearError
-      }}
+      value={{ items, addToCart, decOne, setQty, clearCart, removeFromCart, total, count }}
     >
       {children}
     </CartContext.Provider>

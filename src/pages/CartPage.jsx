@@ -1,7 +1,12 @@
 // src/pages/CartPage.jsx
 import React, { useState } from "react";
 import { useCart } from "../context/CartContext";
-import { supabase } from "../../Backend/supabaseClient";
+
+// 👇 Base del backend (ajusta si usas Next u otra URL)
+const API =
+  (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_BASE) ||
+  (import.meta && import.meta.env?.VITE_API_BASE) ||
+  "http://localhost:4000";
 
 const CartPage = () => {
   const { items, total, clearCart, removeFromCart, setQty, decOne } = useCart();
@@ -13,17 +18,25 @@ const CartPage = () => {
     setLoading(true);
     setMessage(null);
     try {
-      const { data, error } = await supabase.rpc("checkout_carrito", { p_id_car: 1 });
-      if (error) throw error;
+      // 👉 Llama a tu backend (Express), no directo a Supabase
+      const res = await fetch(`${API}/api/checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // si tu backend necesita datos (p.ej. cartId), envíalos aquí:
+        body: JSON.stringify({ cartId: 1 }),
+      });
+
+      if (!res.ok) throw new Error("Checkout request failed");
+      const data = await res.json();
 
       if (data?.ok) {
         setMessage(data.message || "✅ Compra exitosa");
-        await clearCart();
+        await clearCart(); // limpia el carrito en el front (y backend ya procesó)
       } else {
         setMessage(data?.message || "❌ Error en la compra");
       }
     } catch (err) {
-      console.error("Error RPC:", err);
+      console.error("Error checkout:", err);
       setMessage("❌ Error al procesar el pago.");
     } finally {
       setLoading(false);
@@ -78,7 +91,6 @@ const CartPage = () => {
                   <tr key={p.id} style={{ borderBottom: "1px solid #1f2937" }}>
                     <td style={{ padding: 8 }}>{p.name}</td>
                     <td style={{ textAlign: "center", padding: 8 }}>
-                      {/* Controles de cantidad (opcional) */}
                       <button
                         onClick={() => decOne(p.id)}
                         style={{ padding: "2px 8px", marginRight: 6 }}
@@ -121,16 +133,8 @@ const CartPage = () => {
               </tbody>
             </table>
 
-            {/* Botones inferiores */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h3>Total: ${total.toLocaleString("es-CL")}</h3>
-
               <div style={{ display: "flex", gap: 12 }}>
                 <button
                   onClick={clearCart}
@@ -146,7 +150,6 @@ const CartPage = () => {
                 >
                   Vaciar carrito
                 </button>
-
                 <button
                   onClick={handlePayment}
                   disabled={loading}
@@ -167,7 +170,6 @@ const CartPage = () => {
           </>
         )}
 
-        {/* Mensaje de compra */}
         {message && (
           <p style={{ marginTop: 20, color: message.includes("✅") ? "#22c55e" : "#ef4444" }}>
             {message}
