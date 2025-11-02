@@ -1,7 +1,7 @@
 // src/pages/CartPage.jsx
 import React, { useState } from "react";
 import { useCart } from "../context/CartContext";
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from "../../Backend/supabaseClient";
 
 const CartPage = () => {
   const { items, total, clearCart, removeFromCart, setQty, decOne } = useCart();
