@@ -24,7 +24,7 @@ const { getDatabaseInfo } = require('./supabaseTests');
 //Funciones
 const { venderObjeto, finalizarCompra } = require('./controlObjetos');
 
-app.post('api/comprar/:id', async (req, res) => {try {
+app.post('/api/comprar/:id', async (req, res) => {try {
     const idObjeto = parseInt(req.params.id, 10);
     
     if (isNaN(idObjeto)) {
