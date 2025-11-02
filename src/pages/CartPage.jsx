@@ -1,16 +1,33 @@
+// src/pages/CartPage.jsx
 import React, { useState } from "react";
 import { useCart } from "../context/CartContext";
+import { supabase } from "../lib/supabaseClient";
 
 const CartPage = () => {
-  const { items, total, clearCart } = useCart();
-  const [showSuccess, setShowSuccess] = useState(false);
+  const { items, total, clearCart, removeFromCart, setQty, decOne } = useCart();
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState(null);
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
     if (items.length === 0) return alert("Tu carrito está vacío 🛒");
-    setTimeout(() => {
-      setShowSuccess(true);
-      clearCart();
-    }, 800); // simula el tiempo del pago
+    setLoading(true);
+    setMessage(null);
+    try {
+      const { data, error } = await supabase.rpc("checkout_carrito", { p_id_car: 1 });
+      if (error) throw error;
+
+      if (data?.ok) {
+        setMessage(data.message || "✅ Compra exitosa");
+        await clearCart();
+      } else {
+        setMessage(data?.message || "❌ Error en la compra");
+      }
+    } catch (err) {
+      console.error("Error RPC:", err);
+      setMessage("❌ Error al procesar el pago.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -40,113 +57,123 @@ const CartPage = () => {
         {items.length === 0 ? (
           <p>No hay productos en el carrito.</p>
         ) : (
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              marginBottom: 20,
-            }}
-          >
-            <thead>
-              <tr style={{ borderBottom: "1px solid #1f2937" }}>
-                <th style={{ textAlign: "left", padding: 8 }}>Producto</th>
-                <th style={{ textAlign: "center", padding: 8 }}>Cantidad</th>
-                <th style={{ textAlign: "right", padding: 8 }}>Precio</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((p) => (
-                <tr key={p.id} style={{ borderBottom: "1px solid #1f2937" }}>
-                  <td style={{ padding: 8, display: "flex", alignItems: "center", gap: 12 }}>
-                    <img
-                      src={p.image}
-                      alt={p.name}
-                      style={{
-                        width: 60,
-                        height: 60,
-                        objectFit: "cover",
-                        borderRadius: 8,
-                      }}
-                    />
-                    {p.name}
-                  </td>
-                  <td style={{ textAlign: "center", padding: 8 }}>{p.qty}</td>
-                  <td style={{ textAlign: "right", padding: 8 }}>
-                    ${(p.price * p.qty).toLocaleString("es-CL")}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <h3>Total: ${total.toLocaleString("es-CL")}</h3>
-          <button
-            onClick={handlePayment}
-            style={{
-              padding: "12px 18px",
-              borderRadius: 12,
-              border: "1px solid #22c55e",
-              background: "#16a34a",
-              color: "#fff",
-              fontWeight: 800,
-              cursor: "pointer",
-            }}
-          >
-            Realizar pago
-          </button>
-        </div>
-      </div>
-
-      {/* 🔔 Pop-up de compra exitosa */}
-      {showSuccess && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,.6)",
-            display: "grid",
-            placeItems: "center",
-          }}
-          onClick={() => setShowSuccess(false)}
-        >
-          <div
-            style={{
-              background: "#0f172a",
-              padding: 32,
-              borderRadius: 16,
-              border: "2px solid #22c55e",
-              textAlign: "center",
-              color: "#e5e7eb",
-              boxShadow: "0 0 30px rgba(34,197,94,.4)",
-              animation: "pop 0.3s ease",
-            }}
-          >
-            <h2 style={{ color: "#22c55e", marginBottom: 10 }}>✅ Compra Exitosa</h2>
-            <p>¡Gracias por tu compra!</p>
-            <button
-              onClick={() => setShowSuccess(false)}
+          <>
+            <table
               style={{
-                marginTop: 16,
-                padding: "10px 16px",
-                borderRadius: 10,
-                border: "1px solid #334155",
-                background: "#111827",
-                color: "#fff",
+                width: "100%",
+                borderCollapse: "collapse",
+                marginBottom: 20,
               }}
             >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      )}
+              <thead>
+                <tr style={{ borderBottom: "1px solid #1f2937" }}>
+                  <th style={{ textAlign: "left", padding: 8 }}>Producto</th>
+                  <th style={{ textAlign: "center", padding: 8 }}>Cantidad</th>
+                  <th style={{ textAlign: "right", padding: 8 }}>Precio</th>
+                  <th style={{ textAlign: "center", padding: 8 }}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((p) => (
+                  <tr key={p.id} style={{ borderBottom: "1px solid #1f2937" }}>
+                    <td style={{ padding: 8 }}>{p.name}</td>
+                    <td style={{ textAlign: "center", padding: 8 }}>
+                      {/* Controles de cantidad (opcional) */}
+                      <button
+                        onClick={() => decOne(p.id)}
+                        style={{ padding: "2px 8px", marginRight: 6 }}
+                        title="Quitar 1"
+                      >
+                        −
+                      </button>
+                      <span style={{ minWidth: 24, display: "inline-block", textAlign: "center" }}>
+                        {p.qty}
+                      </span>
+                      <button
+                        onClick={() => setQty(p.id, p.qty + 1)}
+                        style={{ padding: "2px 8px", marginLeft: 6 }}
+                        title="Agregar 1"
+                      >
+                        +
+                      </button>
+                    </td>
+                    <td style={{ textAlign: "right", padding: 8 }}>
+                      ${(p.price * p.qty).toLocaleString("es-CL")}
+                    </td>
+                    <td style={{ textAlign: "center", padding: 8 }}>
+                      <button
+                        onClick={() => removeFromCart(p.id)}
+                        style={{
+                          background: "#ef4444",
+                          border: "none",
+                          color: "#fff",
+                          padding: "6px 10px",
+                          borderRadius: 6,
+                          cursor: "pointer",
+                        }}
+                        title="Eliminar del carrito"
+                      >
+                        ❌
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Botones inferiores */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <h3>Total: ${total.toLocaleString("es-CL")}</h3>
+
+              <div style={{ display: "flex", gap: 12 }}>
+                <button
+                  onClick={clearCart}
+                  style={{
+                    padding: "12px 18px",
+                    borderRadius: 12,
+                    border: "1px solid #334155",
+                    background: "#111827",
+                    color: "#fff",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  Vaciar carrito
+                </button>
+
+                <button
+                  onClick={handlePayment}
+                  disabled={loading}
+                  style={{
+                    padding: "12px 18px",
+                    borderRadius: 12,
+                    border: "1px solid #22c55e",
+                    background: loading ? "#166534" : "#16a34a",
+                    color: "#fff",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  {loading ? "Procesando..." : "Realizar pago"}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Mensaje de compra */}
+        {message && (
+          <p style={{ marginTop: 20, color: message.includes("✅") ? "#22c55e" : "#ef4444" }}>
+            {message}
+          </p>
+        )}
+      </div>
     </main>
   );
 };

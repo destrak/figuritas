@@ -5,7 +5,6 @@ import BarNav from "./components/BarNav";
 import ProductsContainer from "./components/ProductsContainer";
 import ProductDetail from "./pages/ProductDetail";
 import CartPage from "./pages/CartPage";
-import { products } from "./data/products";
 
 const AppContent = () => {
   const { count } = useCart();
@@ -13,8 +12,10 @@ const AppContent = () => {
   return (
     <>
       <BarNav cartCount={count} />
+
       <Routes>
-        <Route path="/" element={<ProductsContainer products={products} />} />
+        {/* 👇 Ya no pasamos 'products' manualmente */}
+        <Route path="/" element={<ProductsContainer />} />
         <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/cart" element={<CartPage />} />
       </Routes>
