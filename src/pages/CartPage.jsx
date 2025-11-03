@@ -1,43 +1,87 @@
 // src/pages/CartPage.jsx
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useCart } from "../context/CartContext";
 
-// 👇 Base del backend (ajusta si usas Next u otra URL)
+// 🔗 URL base del backend
 const API =
   (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_BASE) ||
   (import.meta && import.meta.env?.VITE_API_BASE) ||
   "http://localhost:4000";
 
+// ---------- Componente Toast ----------
+function Toast({ open, type = "success", message, onClose }) {
+  if (!open) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        bottom: 24,
+        right: 24,
+        background: type === "success" ? "#16a34a" : "#ef4444",
+        color: "#fff",
+        padding: "16px 24px",
+        borderRadius: 12,
+        boxShadow: "0 10px 24px rgba(0,0,0,.3)",
+        zIndex: 9999,
+        transition: "all 0.3s ease",
+      }}
+    >
+      <strong style={{ display: "block", fontSize: 18, marginBottom: 4 }}>
+        {type === "success" ? "✅ Compra exitosa" : "❌ Error en compra"}
+      </strong>
+      <p style={{ margin: 0 }}>{message}</p>
+      <button
+        onClick={onClose}
+        style={{
+          background: "transparent",
+          border: "none",
+          color: "#fff",
+          marginTop: 6,
+          cursor: "pointer",
+          fontWeight: 700,
+        }}
+      >
+        Cerrar ✕
+      </button>
+    </div>
+  );
+}
+
+// ---------- Página principal ----------
 const CartPage = () => {
   const { items, total, clearCart, removeFromCart, setQty, decOne } = useCart();
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState(null);
+  const [toast, setToast] = useState({ open: false, type: "success", message: "" });
+
+  const showToast = useCallback((type, message) => {
+    setToast({ open: true, type, message });
+    setTimeout(() => setToast({ open: false, type, message: "" }), 3500);
+  }, []);
 
   const handlePayment = async () => {
-    if (items.length === 0) return alert("Tu carrito está vacío 🛒");
+    if (items.length === 0) {
+      showToast("error", "Tu carrito está vacío 🛒");
+      return;
+    }
     setLoading(true);
-    setMessage(null);
     try {
-      // 👉 Llama a tu backend (Express), no directo a Supabase
       const res = await fetch(`${API}/api/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // si tu backend necesita datos (p.ej. cartId), envíalos aquí:
         body: JSON.stringify({ cartId: 1 }),
       });
-
-      if (!res.ok) throw new Error("Checkout request failed");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-
       if (data?.ok) {
-        setMessage(data.message || "✅ Compra exitosa");
-        await clearCart(); // limpia el carrito en el front (y backend ya procesó)
+        await clearCart();
+        showToast("success", data.message || "Compra completada correctamente");
       } else {
-        setMessage(data?.message || "❌ Error en la compra");
+        showToast("error", data?.message || "No se pudo completar la compra");
       }
     } catch (err) {
-      console.error("Error checkout:", err);
-      setMessage("❌ Error al procesar el pago.");
+      console.error("Checkout error:", err);
+      showToast("error", "Error al procesar el pago.");
     } finally {
       setLoading(false);
     }
@@ -93,18 +137,39 @@ const CartPage = () => {
                     <td style={{ textAlign: "center", padding: 8 }}>
                       <button
                         onClick={() => decOne(p.id)}
-                        style={{ padding: "2px 8px", marginRight: 6 }}
-                        title="Quitar 1"
+                        style={{
+                          padding: "4px 10px",
+                          marginRight: 6,
+                          background: "#1e293b",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 6,
+                          cursor: "pointer",
+                        }}
                       >
                         −
                       </button>
-                      <span style={{ minWidth: 24, display: "inline-block", textAlign: "center" }}>
+                      <span
+                        style={{
+                          minWidth: 30,
+                          display: "inline-block",
+                          textAlign: "center",
+                          fontWeight: 700,
+                        }}
+                      >
                         {p.qty}
                       </span>
                       <button
                         onClick={() => setQty(p.id, p.qty + 1)}
-                        style={{ padding: "2px 8px", marginLeft: 6 }}
-                        title="Agregar 1"
+                        style={{
+                          padding: "4px 10px",
+                          marginLeft: 6,
+                          background: "#22c55e",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 6,
+                          cursor: "pointer",
+                        }}
                       >
                         +
                       </button>
@@ -123,7 +188,6 @@ const CartPage = () => {
                           borderRadius: 6,
                           cursor: "pointer",
                         }}
-                        title="Eliminar del carrito"
                       >
                         ❌
                       </button>
@@ -133,7 +197,14 @@ const CartPage = () => {
               </tbody>
             </table>
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            {/* Controles inferiores */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
               <h3>Total: ${total.toLocaleString("es-CL")}</h3>
               <div style={{ display: "flex", gap: 12 }}>
                 <button
@@ -169,13 +240,15 @@ const CartPage = () => {
             </div>
           </>
         )}
-
-        {message && (
-          <p style={{ marginTop: 20, color: message.includes("✅") ? "#22c55e" : "#ef4444" }}>
-            {message}
-          </p>
-        )}
       </div>
+
+      {/* Pop-out de resultado */}
+      <Toast
+        open={toast.open}
+        type={toast.type}
+        message={toast.message}
+        onClose={() => setToast({ open: false, type: toast.type, message: "" })}
+      />
     </main>
   );
 };
