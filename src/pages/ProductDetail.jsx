@@ -15,6 +15,9 @@ export default function ProductDetail() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // 👇 estado para antirebote del botón
+  const [adding, setAdding] = useState(false);
+
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -38,6 +41,19 @@ export default function ProductDetail() {
 
   const { id: pid, name, price, stock, image, descripcion } = product;
 
+  const handleAdd = async () => {
+    if (adding || stock <= 0) return;        // evita doble click simultáneo
+    setAdding(true);
+    try {
+      await addToCart({ id: pid, name, price });
+    } catch (err) {
+      console.error("Error al añadir:", err);
+    } finally {
+      // pequeño antirebote para clicks muy rápidos
+      setTimeout(() => setAdding(false), 300);
+    }
+  };
+
   return (
     <main style={{ width: "100%", minHeight: "calc(100vh - 60px)", background: "#0b1220",
                    padding: "24px 20px", display: "grid", placeItems: "center", color: "#e5e7eb" }}>
@@ -53,13 +69,24 @@ export default function ProductDetail() {
           </div>
           {descripcion && <p>{descripcion}</p>}
           <p>{stock > 0 ? `Stock disponible: ${stock}` : "Sin stock"}</p>
+
           <button
-            disabled={stock <= 0}
-            onClick={() => addToCart({ id: pid, name, price })}
-            style={{ padding: "12px 18px", borderRadius: 12, border: "1px solid #22c55e",
-                     background: stock > 0 ? "#16a34a" : "#374151", color: "#fff", fontWeight: 800 }}
+            disabled={stock <= 0 || adding}
+            onClick={handleAdd}
+            aria-busy={adding ? "true" : "false"}
+            style={{
+              padding: "12px 18px",
+              borderRadius: 12,
+              border: "1px solid #22c55e",
+              background: stock > 0 && !adding ? "#16a34a" : "#374151",
+              color: "#fff",
+              fontWeight: 800,
+              cursor: stock > 0 && !adding ? "pointer" : "not-allowed",
+              transition: "opacity .15s ease",
+              opacity: adding ? 0.85 : 1
+            }}
           >
-            Añadir al carrito
+            {adding ? "Añadiendo..." : "Añadir al carrito"}
           </button>
         </div>
       </div>
