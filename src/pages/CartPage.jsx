@@ -2,15 +2,16 @@
 import React, { useState, useCallback } from "react";
 import { useCart } from "../context/CartContext";
 
-// 🔗 URL base del backend
+// Base del backend
 const API =
   (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_BASE) ||
   (import.meta && import.meta.env?.VITE_API_BASE) ||
   "http://localhost:4000";
 
-// ---------- Componente Toast ----------
+// Toast simple (pop-out)
 function Toast({ open, type = "success", message, onClose }) {
   if (!open) return null;
+  const bg = type === "success" ? "#16a34a" : "#ef4444";
 
   return (
     <div
@@ -18,26 +19,28 @@ function Toast({ open, type = "success", message, onClose }) {
         position: "fixed",
         bottom: 24,
         right: 24,
-        background: type === "success" ? "#16a34a" : "#ef4444",
+        background: bg,
         color: "#fff",
         padding: "16px 24px",
         borderRadius: 12,
         boxShadow: "0 10px 24px rgba(0,0,0,.3)",
         zIndex: 9999,
-        transition: "all 0.3s ease",
+        maxWidth: 420,
       }}
+      role="status"
+      aria-live="polite"
     >
-      <strong style={{ display: "block", fontSize: 18, marginBottom: 4 }}>
-        {type === "success" ? "✅ Compra exitosa" : "❌ Error en compra"}
+      <strong style={{ display: "block", fontSize: 18, marginBottom: 6 }}>
+        {type === "success" ? "✅ Compra exitosa" : "❌ Compra fallida"}
       </strong>
-      <p style={{ margin: 0 }}>{message}</p>
+      <div>{message}</div>
       <button
         onClick={onClose}
         style={{
           background: "transparent",
           border: "none",
           color: "#fff",
-          marginTop: 6,
+          marginTop: 8,
           cursor: "pointer",
           fontWeight: 700,
         }}
@@ -48,15 +51,16 @@ function Toast({ open, type = "success", message, onClose }) {
   );
 }
 
-// ---------- Página principal ----------
 const CartPage = () => {
   const { items, total, clearCart, removeFromCart, setQty, decOne } = useCart();
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState({ open: false, type: "success", message: "" });
 
+  // Toast state
+  const [toast, setToast] = useState({ open: false, type: "success", message: "" });
   const showToast = useCallback((type, message) => {
     setToast({ open: true, type, message });
-    setTimeout(() => setToast({ open: false, type, message: "" }), 3500);
+    const t = setTimeout(() => setToast({ open: false, type, message: "" }), 3500);
+    return () => clearTimeout(t);
   }, []);
 
   const handlePayment = async () => {
@@ -71,14 +75,24 @@ const CartPage = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cartId: 1 }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (data?.ok) {
-        await clearCart();
-        showToast("success", data.message || "Compra completada correctamente");
-      } else {
-        showToast("error", data?.message || "No se pudo completar la compra");
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data?.ok) {
+        // ❌ NO limpiar carrito
+        const msg = data?.message || `Error en checkout (HTTP ${res.status})`;
+        showToast("error", msg);
+        return;
       }
+
+      // ✅ ÉXITO → limpiar carrito y mostrar total si viene
+      const totalTxt =
+        typeof data.total !== "undefined"
+          ? ` — Total $${Number(data.total).toLocaleString("es-CL")}`
+          : "";
+      showToast("success", (data.message || "Compra realizada") + totalTxt);
+
+      await clearCart();
     } catch (err) {
       console.error("Checkout error:", err);
       showToast("error", "Error al procesar el pago.");
@@ -146,6 +160,7 @@ const CartPage = () => {
                           borderRadius: 6,
                           cursor: "pointer",
                         }}
+                        title="Quitar 1"
                       >
                         −
                       </button>
@@ -170,6 +185,7 @@ const CartPage = () => {
                           borderRadius: 6,
                           cursor: "pointer",
                         }}
+                        title="Agregar 1"
                       >
                         +
                       </button>
@@ -188,6 +204,7 @@ const CartPage = () => {
                           borderRadius: 6,
                           cursor: "pointer",
                         }}
+                        title="Eliminar del carrito"
                       >
                         ❌
                       </button>
@@ -197,14 +214,7 @@ const CartPage = () => {
               </tbody>
             </table>
 
-            {/* Controles inferiores */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h3>Total: ${total.toLocaleString("es-CL")}</h3>
               <div style={{ display: "flex", gap: 12 }}>
                 <button
@@ -242,7 +252,7 @@ const CartPage = () => {
         )}
       </div>
 
-      {/* Pop-out de resultado */}
+      {/* Toast */}
       <Toast
         open={toast.open}
         type={toast.type}
